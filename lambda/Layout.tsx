@@ -1,10 +1,10 @@
 import { html } from "hono/html";
 
 export interface SiteData {
-	title: string;
-	description: string;
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	children?: any;
+  title: string;
+  description: string;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  children?: any;
 }
 
 export const Layout = (props: SiteData) => html`
