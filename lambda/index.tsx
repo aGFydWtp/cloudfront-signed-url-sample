@@ -77,9 +77,9 @@ app.get("/api/signed-url", async (c) => {
   });
 
   return c.html(`
-		<a href="${signedUrl}" target="_blank" class="text-blue-600 underline hover:text-blue-800">
-			Open Signed URL
-		</a>
+    <a href="${signedUrl}" target="_blank" class="text-blue-600 underline hover:text-blue-800">
+      Open Signed URL
+    </a>
 	`);
 });
 
