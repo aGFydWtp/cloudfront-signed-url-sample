@@ -22,6 +22,9 @@ pnpm cdk:dev deploy --all
 ```
 
 ## cdk.json の設定
+
+`hostName`、`domainName`、`hostedZoneId` がすべて設定されていればカスタムドメインを使った CloudFront が作成される。設定されていなければ CloudFront のデフォルトドメインが使用される。
+
 - `awsAccountId`
   - デプロイ先の AWS アカウントID
 - `hostName`
@@ -31,7 +34,7 @@ pnpm cdk:dev deploy --all
 - `hostedZoneId`
   - domainName のホストゾーンID
 - `s3OriginAccessControlId`
-  - S3 用の OAC ID
+  - S3 用の OAC ID。未指定の場合、CDK によって作成される。
 
 ## BucketListViewerStack
 署名付きURLを生成する簡易 API。
