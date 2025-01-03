@@ -39,8 +39,9 @@ export class CloudFrontSignedUrlStack extends cdk.Stack {
 
     const bucket = new Bucket(this, "Bucket", {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      // 必要に応じてコメントアウトを外す
+      // removalPolicy: cdk.RemovalPolicy.DESTROY,
+      // autoDeleteObjects: true,
     });
     this.bucket = bucket;
 
