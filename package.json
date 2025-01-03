@@ -1,0 +1,41 @@
+{
+  "name": "cloudfront-signed-url-sample",
+  "version": "0.1.0",
+  "bin": {
+    "cf-signed-url": "bin/cf-signed-url.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "cdk:dev": "cdk -c environment=dev",
+    "check": "npx biome check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/aws-lambda": "^8.10.146",
+    "@types/jest": "^29.5.12",
+    "@types/node": "20.14.2",
+    "@types/react": "^18.3.12",
+    "aws-cdk": "2.146.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.4",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.4.5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-application-auto-scaling": "^3.679.0",
+    "@aws-sdk/client-ec2": "^3.679.0",
+    "@aws-sdk/client-ecs": "^3.679.0",
+    "@aws-sdk/client-s3": "^3.717.0",
+    "@aws-sdk/client-secrets-manager": "^3.716.0",
+    "aws-cdk-lib": "2.146.0",
+    "aws-cloudfront-sign": "^3.0.2",
+    "aws-lambda": "^1.0.7",
+    "constructs": "^10.0.0",
+    "crypto": "^1.0.1",
+    "hono": "^4.6.6",
+    "source-map-support": "^0.5.21"
+  }
+}
