@@ -90,10 +90,10 @@ export class CloudFrontSignedUrlStack extends Stack {
       ],
     });
 
-    if (props.customDomainSetting) {
-      /* ============================================================
+    /* ============================================================
       DNS record for custom domain
     ============================================================ */
+    if (props.customDomainSetting) {
       const { hostedZoneId, domainName, hostName } = props.customDomainSetting;
       const hostedZone = HostedZone.fromHostedZoneAttributes(
         this,
