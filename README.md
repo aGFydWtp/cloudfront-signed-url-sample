@@ -33,8 +33,5 @@ pnpm cdk:dev deploy --all
   - 事前に作成したパブリックホストゾーンのドメイン名
 - `hostedZoneId`
   - domainName のホストゾーンID
-- `s3OriginAccessControlId`
-  - S3 用の OAC ID。未指定の場合、CDK によって作成される。
-
-## BucketListViewerStack
-署名付きURLを生成する簡易 API。
+- `enableSimpleViewer`
+  - このフラグを true にすると、S3のファイル一覧を表示して、署名付きURLを生成する簡易ビューアを作成します。

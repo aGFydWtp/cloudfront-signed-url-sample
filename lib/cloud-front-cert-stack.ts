@@ -22,7 +22,6 @@ export class CloudFrontCertStack extends cdk.Stack {
     /* ============================================================
       Certificate
     ============================================================ */
-
     const hostedZone = HostedZone.fromHostedZoneAttributes(this, "HostedZone", {
       hostedZoneId: props.hostedZoneId,
       zoneName: props.domainName,

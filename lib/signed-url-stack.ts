@@ -1,52 +1,50 @@
-import * as cdk from "aws-cdk-lib";
-import { Duration } from "aws-cdk-lib";
+import {
+  CfnOutput,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  type StackProps,
+} from "aws-cdk-lib";
 import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import {
-  CfnOriginAccessControl,
   Distribution,
   KeyGroup,
   PublicKey,
   ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
-import { S3Origin } from "aws-cdk-lib/aws-cloudfront-origins";
+import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { FunctionUrlAuthType, Runtime } from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
 import { CloudFrontTarget } from "aws-cdk-lib/aws-route53-targets";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment } from "aws-cdk-lib/aws-s3-deployment";
+import { Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import type { Construct } from "constructs";
 import { KeyPairProvider } from "./KeyPairProvider";
 
-interface Props extends cdk.StackProps {
+interface Props extends StackProps {
   customDomainSetting: {
     cert: ICertificate;
     hostName: string;
     domainName: string;
     hostedZoneId: string;
   } | null;
-  s3OriginAccessControlId: string;
+  enableSimpleViewer?: boolean;
 }
 
-export class CloudFrontSignedUrlStack extends cdk.Stack {
-  public readonly secret: Secret;
-  public readonly bucket: Bucket;
-  public readonly publicKey: PublicKey;
-  public readonly distribution: Distribution;
-
+export class CloudFrontSignedUrlStack extends Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
     const bucket = new Bucket(this, "Bucket", {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      // 必要に応じてコメントアウトを外す
-      // removalPolicy: cdk.RemovalPolicy.DESTROY,
-      // autoDeleteObjects: true,
     });
-    this.bucket = bucket;
 
     new BucketDeployment(this, "S3Assets", {
-      sources: [cdk.aws_s3_deployment.Source.asset("assets")],
+      sources: [Source.asset("assets")],
       destinationBucket: bucket,
     });
 
@@ -56,16 +54,14 @@ export class CloudFrontSignedUrlStack extends cdk.Stack {
     const keyPairProvider = new KeyPairProvider(this, "KeyPairProvider");
     const privateSecret = new Secret(this, "PrivateSecret", {
       secretName: "CloudFrontSignedUrlSecret",
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: RemovalPolicy.DESTROY,
       secretStringValue: keyPairProvider.privateKeyAsJsonString,
     });
-    this.secret = privateSecret;
 
     const publicKey = new PublicKey(this, "PublicKey", {
       encodedKey: keyPairProvider.publicKey,
       comment: "CloudFront Signed URL用の公開鍵",
     });
-    this.publicKey = publicKey;
 
     const keyGroup = new KeyGroup(this, "KeyGroup", {
       items: [publicKey],
@@ -80,7 +76,7 @@ export class CloudFrontSignedUrlStack extends cdk.Stack {
           ]
         : undefined,
       defaultBehavior: {
-        origin: new S3Origin(bucket),
+        origin: S3BucketOrigin.withOriginAccessControl(bucket),
         trustedKeyGroups: [keyGroup],
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
@@ -93,39 +89,11 @@ export class CloudFrontSignedUrlStack extends cdk.Stack {
         },
       ],
     });
-    this.distribution = distribution;
 
-    const cfnDistribution = distribution.node
-      .defaultChild as cdk.aws_cloudfront.CfnDistribution;
-
-    // OAI削除（勝手に設定されるため）
-    cfnDistribution.addPropertyOverride(
-      "DistributionConfig.Origins.0.S3OriginConfig.OriginAccessIdentity",
-      "",
-    );
-
-    // Set OAC
-    let oacId: string | null = props.s3OriginAccessControlId ?? null;
-    if (!oacId) {
-      const oac = new CfnOriginAccessControl(this, "OAC", {
-        originAccessControlConfig: {
-          name: "CloudFrontSignedUrlOAC",
-          signingBehavior: "always",
-          signingProtocol: "sigv4",
-          originAccessControlOriginType: "s3",
-        },
-      });
-      oacId = oac.attrId;
-    }
-    cfnDistribution.addPropertyOverride(
-      "DistributionConfig.Origins.0.OriginAccessControlId",
-      oacId,
-    );
-
-    /* ============================================================
+    if (props.customDomainSetting) {
+      /* ============================================================
       DNS record for custom domain
     ============================================================ */
-    if (props.customDomainSetting) {
       const { hostedZoneId, domainName, hostName } = props.customDomainSetting;
       const hostedZone = HostedZone.fromHostedZoneAttributes(
         this,
@@ -152,5 +120,35 @@ export class CloudFrontSignedUrlStack extends cdk.Stack {
       "AWS:SourceArn": `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
     });
     bucket.addToResourcePolicy(contentsBucketPolicyStatement);
+
+    /* ============================================================
+      Bucket List Viewer & Get Signed URL
+    ============================================================ */
+    if (props.enableSimpleViewer) {
+      const hostName = props.customDomainSetting
+        ? `${props.customDomainSetting.hostName}.${props.customDomainSetting.domainName}`
+        : distribution.domainName;
+      const fn = new NodejsFunction(this, "Lambda", {
+        entry: "lambda/index.tsx",
+        handler: "handler",
+        runtime: Runtime.NODEJS_20_X,
+        environment: {
+          BUCKET: bucket.bucketName,
+          HOST_NAME: hostName,
+          PRIVATE_SECRET_NAME: privateSecret.secretName,
+          CF_KEY_PAIR_ID: publicKey.publicKeyId,
+        },
+      });
+      const functionUrl = fn.addFunctionUrl({
+        authType: FunctionUrlAuthType.NONE,
+      });
+
+      bucket.grantRead(fn);
+      privateSecret.grantRead(fn);
+
+      new CfnOutput(this, "FunctionUrl", {
+        value: functionUrl.url,
+      });
+    }
   }
 }

@@ -2,7 +2,6 @@
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { BucketListViewerStack } from "../lib/bucket-list-viewer-stack";
 import { CloudFrontCertStack } from "../lib/cloud-front-cert-stack";
 import { CloudFrontSignedUrlStack } from "../lib/signed-url-stack";
 
@@ -46,20 +45,8 @@ if (hostName && domainName && hostedZoneId) {
   customDomainSetting = { cert, hostName, domainName, hostedZoneId };
 }
 
-const signedUrlStack = new CloudFrontSignedUrlStack(
-  app,
-  `${envKey}CloudFrontSignedUrlStack`,
-  {
-    env: { account: envValues.awsAccountId, region: "us-east-1" },
-    customDomainSetting,
-    s3OriginAccessControlId: envValues.s3OriginAccessControlId,
-  },
-);
-
-new BucketListViewerStack(app, `${envKey}BucketListViewerStack`, {
+new CloudFrontSignedUrlStack(app, `${envKey}CloudFrontSignedUrlStack`, {
   env: { account: envValues.awsAccountId, region: "us-east-1" },
-  secret: signedUrlStack.secret,
-  bucket: signedUrlStack.bucket,
-  publicKey: signedUrlStack.publicKey,
-  hostName: signedUrlStack.distribution.domainName,
+  customDomainSetting,
+  enableSimpleViewer: envValues.enableSimpleViewer,
 });

@@ -68,7 +68,7 @@
       "hostName": "",
       "domainName": "",
       "hostedZoneId": "",
-      "s3OriginAccessControlId": ""
+      "enableSimpleViewer": true
     }
   }
 }
